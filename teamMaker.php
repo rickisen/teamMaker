@@ -2,15 +2,18 @@
 // A program that continues to look at a pool of players and groups them in teams of 5 based on their attributes
 
 require_once "Classes/DB.class.php";
-// MAIN LOOP 
-	// loop through all our specifity levels 
-		// get this specificity level's teams
-		// move players in a team from the pool into the "teams" table
-	// Assign steam-groups to each team
+
+// loop through all our specifity levels 
+for ($i = 0 ; $i != 4; $i++){
+  // get this specificity level's teams
+  $teams = groupPlayers($i);
+  
+  // move the players into their lobbies
+  movePlayers($teams);
+}
 
 // Grouping function, takes 1 parameter, the level of specificity to group players on.
 // returns an multidimensional array with all ready teams
-
 function groupPlayers($specificity){
   // Create connection to db
   $database = DB::getInstance() ;
