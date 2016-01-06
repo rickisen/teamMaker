@@ -2,8 +2,6 @@
 // A program that continues to look at a pool of players and groups them in teams of 5 based on their attributes
 
 require_once "Classes/DB.class.php";
-
-
 // MAIN LOOP 
 	// loop through all our specifity levels 
 		// get this specificity level's teams
@@ -12,6 +10,7 @@ require_once "Classes/DB.class.php";
 
 // Grouping function, takes 1 parameter, the level of specificity to group players on.
 // returns an multidimensional array with all ready teams
+
 function groupPlayers($specificity){
   // Create connection to db
   $database = DB::getInstance() ;
@@ -61,7 +60,7 @@ function groupPlayers($specificity){
       $player = 0 ;
     
       // put the users in this player group into their teams in the return-array, 
-      // and ignore the last users who don't fit in a team
+      // and ignore the last users who don't fit into a team, (they will probably fit into a team next run)
       for ( $i = 0 ; $i != $ammountOfTeamsInGroup ; $i++ ) {
         $ret[] = [$users[$player++], $users[$player++], $users[$player++], $users[$player++], $users[$player++] ];
       }
@@ -73,8 +72,34 @@ function groupPlayers($specificity){
 
 // Moving function That moves players who are in teams into corresponding lobbies. 
 // takes one parameter, an multidimensional array that holds teams (that holds steamIDs) 
-	//  loop through each team,
-		// generate a uniq_id for this lobby. 
-		// loop through each player 
-			// add this player into the player-belongs-in-lobby table
-			// remove it from players_looking_for_lobby
+function movePlayers($teams){
+  $database = DB::getInstance() ;
+
+  //  loop through each team,
+  foreach ($teams as $team){
+    // generate a uniq_id for this lobby. 
+    $lobbyId = uinqid();
+    // loop through each player in this team
+    foreach ($teams as $player){// add this player into the lobby table
+      // query to load a player into the lobby table
+      $qInsertPlayerIntoLobby = '
+        INSERT INTO lobby (steam_id, lobby_id,)
+        VALUES ( "'.$player.'", "'.$lobbyId.'", )
+      ';
+
+      if ( ! $result = $database->query($qInsertPlayerIntoLobby)){
+        echo 'error occured when trying to insert player: '.$player.' into the lobby'.$lobbyId.': '.$database->error;
+      }
+
+      // remove it from players_looking_for_lobby
+      // query to remove a player from the players_looking_for_lobby table
+      $qDeleteUserFromLooking = '
+        DELETE FROM players_looking_for_lobby WHERE steam_id = '.$player.'
+      ';
+
+      if ( ! $result = $database->query($qDeleteUserFromLooking)){
+        echo 'error occured when trying to remove player: '.$player.' from players_looking_for_lobby: '.$database->error;
+      }
+    }
+  }
+}
