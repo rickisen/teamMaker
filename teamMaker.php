@@ -8,7 +8,7 @@ require_once "Classes/DB.class.php";
 
 // loop through all our specifity levels, be most specific first
 for ($i = 4 ; $i != 0; $i--){
-  echo "running on specificity level $i";
+  echo "running on specificity level $i \n";
   // get this specificity level's teams
   $teams = groupPlayers($i);
 
