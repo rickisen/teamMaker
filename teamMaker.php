@@ -6,17 +6,18 @@ require_once "Classes/DB.class.php";
 // testing only
 /* insertTestUsers(); */
 
-// loop through all our specifity levels, be specific first
+// loop through all our specifity levels, be most specific first
 for ($i = 4 ; $i != 0; $i--){
+  echo "running on specificity level $i";
   // get this specificity level's teams
   $teams = groupPlayers($i);
-
-  // testing only 
-  print_r($teams);
 
   // move the players into their lobbies
   if (!empty($teams))
     movePlayers($teams);
+
+  // allow some time to pass before trying the next culling
+  sleep(5);
 }
 
 // Grouping function, takes 1 parameter, the level of specificity to group players on.
