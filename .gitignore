@@ -2,5 +2,6 @@
 .vagrant
 .swp
 .ini
+mysqliConfig.ini
 adminer.css
 adminer.php
