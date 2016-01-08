@@ -12,6 +12,7 @@ for ($i = 4 ; $i != 0; $i--){
   // get this specificity level's teams
   $teams = groupPlayers($i);
 
+  echo '\n'.date();
   print_r($teams);
 
   // move the players into their lobbies
