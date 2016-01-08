@@ -18,8 +18,6 @@ for ($i = 4 ; $i != 0; $i--){
   if (!empty($teams))
     movePlayers($teams);
 
-  // allow some time to pass before trying the next culling
-  sleep(5);
 }
 
 // Grouping function, takes 1 parameter, the level of specificity to group players on.
@@ -41,7 +39,15 @@ function groupPlayers($specificity){
     // add a ',' after the attribute 
     // unless this is the last attribute
     if ($i < $specificity - 1 ) $activeAttributes .= ',' ;
+
+    // stuff to be added before and after the atrtributes
+    // do this here so that everything works on specifity level 0 
+    $prefixAttributes  = 'GROUP BY ';
+    $postfixAttributes = ' HAVING size > 4 ';
+    $activeAttributes  = $prefixAttributes.$activeAttributes.$postfixAttributes;
   }
+
+  if ($specificity == 0 ) $activeAttributes .= ' LIMIT 5 ' ;
 
   // the generated Query for getting relevant playerID's, only get groups that contain 5 or more players, as they are 
   // the only groups that could hold interesting players this run, and order them by the the time they where added to the pool
@@ -52,8 +58,7 @@ function groupPlayers($specificity){
     FROM   player_looking_for_lobby LEFT JOIN user 
              ON player_looking_for_lobby.steam_id = user.steam_id 
     
-    GROUP BY '.$activeAttributes.'
-    HAVING size > 4
+    '.$activeAttributes.'
   ';
 
   // Send the query to the db
