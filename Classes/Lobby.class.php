@@ -23,21 +23,13 @@ class Lobby {
 			return FALSE;
 	}
 
-	function addMember($member, $qualitylevel){
+	function addMember($member){
 		if (!isset($this->lobbyLeader)){
 			$this->lobbyLeader = $member;
-		} elseif (count($this->members) < 3 ) {
-			$this->members [] = $member;
+		} elseif (count($this->members) < 4 ) {
+			$this->members[] = $member;
 		} else {
 			return FALSE;
-		}
-
-		// update the quality of this lobby, if this 
-		// user came from another level, might be fucked up
-		if ($this->quality > $qualitylevel){
-			$this->quality -= $qualitylevel / 5 ;
-		} elseif ($this-quality < $qualitylevel){
-			$this->quality += $qualitylevel / 5 ;
 		}
 
 		return TRUE;

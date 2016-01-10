@@ -48,8 +48,8 @@ class LobbyMaker {
 		    SELECT  steam_id 
 		    FROM    player_looking_for_lobby LEFT JOIN user
 				ON lobby.steam_id = user.steam_id
-		    WHERE   started_looking < (UNIX_TIMESTAMP() - 300)
-		    ORDER BY rank, country
+		    WHERE   started_looking < (UNIX_TIMESTAMP() - 250)
+		    ORDER BY rank, country, age_group
 		';
 
 		// query the db and put all the losers currently in there into new lobbies
@@ -62,53 +62,62 @@ class LobbyMaker {
 
 	static function levelOne(){
 		$database = DB::getInstance() ;
-		$lobbies  = self::getLobbyHolder();
 
 		$qLevelOne = '
 		    SELECT  count(user.steam_id) AS size, 
-			    GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC ) AS users
+			    GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC, age_group, primary_language, secondary_language) AS users
 
 		    FROM   player_looking_for_lobby LEFT JOIN user 
 			     ON player_looking_for_lobby.steam_id = user.steam_id 
 
+		    WHERE   started_looking < (UNIX_TIMESTAMP() - 200)
 		    GROUP BY rank
 		    HAVING size >= 5
 		';
 		
-		$result = $database->query($qLevelOne);
-	    	while ($group = $result->fetch_assoc()) {
-
-		        $users = explode(',', $group['users'] );
-
-			foreach ($users as $user){
-				$lobbies->addMember($user, 1);
-			}
-		}
+                // query the db, and if we got some results, handle the properly
+                if( $result = $database->query($qLevelOne)){
+                  self::HandleGroupResults($result, 1);
+                } 
 	}
 
 	static function levelTwo(){
-		$database = DB::getInstance() ;
 		$lobbies  = self::getLobbyHolder();
 
 		$qLevelTwo = '
 		    SELECT  count(user.steam_id) AS size, 
-			    GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC ) AS users
+			    GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC, primary_language, secondary_language) AS users
 
 		    FROM   player_looking_for_lobby LEFT JOIN user 
 			     ON player_looking_for_lobby.steam_id = user.steam_id 
 
+		    WHERE   started_looking < (UNIX_TIMESTAMP() - 150)
 		    GROUP BY rank, age_group
 		    HAVING size >= 5
 		';
 		
-		$result = $database->query($qLevelTwo);
-	    	while ($group = $result->fetch_assoc()) {
-
-		        $users = explode(',', $group['users'] );
-
-			foreach ($users as $user){
-				$lobbies->addMember($user, 2);
-			}
-		}
+                // query the db, and if we got some results, handle them properly
+                if( $result = $database->query($qLevelTwo)){
+                  self::HandleGroupResults($result, 2);
+                } 
 	}
+
+        static function HandleGroupResults($GResult, $qualityLevel){
+		$lobbies  = self::getLobbyHolder();
+	    	while ($group = $GResult->fetch_assoc()) {
+		        $users = explode(',', $group['users'] );
+                        $ammountOfTeamsInGroup = ($group['size'] - ( $group['size'] % 5 )) / 5  ;
+
+                        // loop like this so that we'll make as many teams as possible 
+                        // out of this group of users, and leave the people who didn't 
+                        // fit into a team in the pool of users who are looking for teams
+                        // They'll surely find mates on the next run
+                        $userCounter = 0 ; 
+                        for ($i = 0; $i != $ammountOfTeamsInGroup ; $i++){
+                          $lobbies->addLobby($qualityLevel); // the number indicates this lobbies quality
+                          for ($i = 0 ; $i != 5 ; $i++) // add exactly 5 users into a team
+                            $lobbies->lastLobby()->addMember($users[$userCounter++]);
+                        }
+		}
+        }
 }
