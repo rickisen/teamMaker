@@ -49,7 +49,9 @@ class LobbyMaker {
 	static function movePlayers() {
 		$lobbies  = self::getLobbyHolder();
 		
-		echo "\n created ".count($lobbies->lobbies).' lobbies';
+		if ($numOfLobbies = count($lobbies->lobbies) > 0)
+			echo "created $numOfLobbies lobbies \n";
+
 		foreach ($lobbies->lobbies as $lobby){
 			if ($lobby->isComplete()){
 				// first move the leader, and then all his minions
@@ -119,8 +121,8 @@ class LobbyMaker {
                   }
                 } 
 
-                if ($database->error){
-                  echo "something wrong with levelZero: ".$database->error;
+                if ($error = $database->error){
+                  echo "something wrong with levelZero: ".$error;
                 }
 
                 self::movePlayers(); // is usually run by HandleGroupResults
@@ -146,8 +148,8 @@ class LobbyMaker {
                   self::HandleGroupResults($result, 1);
                 } 
 
-                if ($database->error){
-                  echo "something wrong with levelOne: ".$database-error;
+                if ($error = $database->error){
+                  echo "something wrong with levelOne: ".$error;
                 }
 	}
 
@@ -172,8 +174,8 @@ class LobbyMaker {
                   self::HandleGroupResults($result, 2);
                 } 
 
-                if ($database->error){
-                  echo "something wrong with levelTwo: ".$database-error;
+                if ($error = $database->error){
+                  echo "something wrong with levelTwo: ".$error;
                 }
 	}
 
@@ -207,13 +209,13 @@ class LobbyMaker {
                 while ($row = $secLangResult->fetch_assoc())
                   $langs[] = $row['secondary_language'];
 
+		
                 // this makes sure that there is only one copy 
-                // of each language in this array
-                array_unique($langs);
+                // of every spoken language in this array
+                $langs = array_unique($langs);
 
                 // for every spoken language we make a new group query
                 foreach ($langs as $lang){
-		      echo "\nlooking for $lang speaking players";
                       $qLevelThree = '
                           SELECT  count(user.steam_id) AS size, 
                                   GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
@@ -231,11 +233,14 @@ class LobbyMaker {
                       
                       // query the db, and if we got some results, handle them properly
                       if( $result = $database->query($qLevelThree)){
-                        self::HandleGroupResults($result, 3);
+			if ( $numberOfRows = $result->num_rows > 0 ){
+				echo "found ".$numberOfRows." $lang speaking player groups \n";
+				self::HandleGroupResults($result, 3);
+			}
                       } 
 
-                      if ($database->error){
-                        echo "something wrong with levelThree on language $lang: ".$database-error;
+                      if ($error = $database->error){
+                        echo "something wrong with levelThree on language $lang: ".$error;
                       }
                 }
 	}
@@ -257,7 +262,7 @@ class LobbyMaker {
                             $lobbies->lastLobby()->addMember($users[$userCounter++]);
                         }
 		}
-                // move the players now so that we don't try to lobbie people twice on level 3
+                // move the players now so that we don't try to lobby people twice on level 3
                 self::movePlayers();
         }
 }
