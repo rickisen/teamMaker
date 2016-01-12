@@ -48,12 +48,14 @@ class LobbyMaker {
 
 	static function movePlayers() {
 		$lobbies  = self::getLobbyHolder();
-		foreach (self::getLobbyHolder()->lobbies as $lobby){
+		
+		echo "\n created ".count($lobbies->lobbies).' lobbies';
+		foreach ($lobbies->lobbies as $lobby){
 			if ($lobby->isComplete()){
 				// first move the leader, and then all his minions
-				self::movePlayer($lobby->lobbyLeader, $lobby->lobby_id, $lobby->quality, TRUE);
+				self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, TRUE);
 				foreach ($lobby->members as $teamMember){
-					self::movePlayer($teamMember, $lobby->lobby_id, $lobby->quality);
+					self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality);
 				}
 			}
 		}
@@ -74,12 +76,12 @@ class LobbyMaker {
                 
                 // move player into the lobby table
 		$qMoveMember = '
-			INSERT INTO lobby (lobby_id, steam_id, quality, isLeader)
+			INSERT INTO lobby (lobby_id, steam_id, quality, is_leader)
 			VALUES ("'.$lobbyId.'","'.$player.'","'.$quality.'", '.$isLeader.');
 		';
                 $database->query($qMoveMember);
-		if ($database->error){
-			echo "Something went wrong when trying to move player $player into lobby $lobbyId : ".$database-error;
+		if ($error = $database->error){
+			echo "Something went wrong when trying to move player $player into lobby $lobbyId : ".$error;
 			break;
 		}
 
@@ -89,8 +91,8 @@ class LobbyMaker {
 			WHERE steam_id = '.$player.'
 		';
 		$database->query($qDeletePlayer);
-		if ($database->error){
-			echo "Something went wrong when trying to remove player $player from PLFL: ".$database-error;
+		if ($error = $database->error){
+			echo "Something went wrong when trying to remove player $player from PLFL: ".$error;
 			break;
 		}
 	}
@@ -102,9 +104,9 @@ class LobbyMaker {
 
 		// query to get all losers
 		$qLevelZero = '
-		    SELECT  steam_id 
+		    SELECT  user.steam_id 
 		    FROM    player_looking_for_lobby LEFT JOIN user
-				ON lobby.steam_id = user.steam_id
+				ON player_looking_for_lobby.steam_id = user.steam_id
 		    WHERE   started_looking < (UNIX_TIMESTAMP() - 250)
 		    ORDER BY rank, age_group, country
 		';
@@ -118,7 +120,7 @@ class LobbyMaker {
                 } 
 
                 if ($database->error){
-                  echo "something wrong with levelZero: ".$database-error;
+                  echo "something wrong with levelZero: ".$database->error;
                 }
 
                 self::movePlayers(); // is usually run by HandleGroupResults
@@ -150,6 +152,7 @@ class LobbyMaker {
 	}
 
 	static function levelTwo(){
+		$database = DB::getInstance() ;
 		$lobbies  = self::getLobbyHolder();
 
 		$qLevelTwo = '
@@ -176,10 +179,20 @@ class LobbyMaker {
 
 	static function levelThree(){
 		$lobbies  = self::getLobbyHolder();
+		$database = DB::getInstance() ;
 
                 // Queries that gets all languages that have speakers in the db
-                $qGetAllPriLangs = ' SELECT DISTINCT primary_language from user ';
-                $qGetAllSecLangs = ' SELECT DISTINCT secondary_language from user ';
+                $qGetAllPriLangs = ' 
+					SELECT DISTINCT primary_language 
+					FROM user 
+					WHERE primary_language IS NOT NULL 
+					  AND primary_language != ""';
+
+                $qGetAllSecLangs = ' 
+					SELECT DISTINCT secondary_language 
+					FROM user 
+					WHERE secondary_language IS NOT NULL 
+					  AND secondary_language != ""';
 
                 // this will come to hold all the spoken languages, both primary and secondary
                 $langs = array(); 
@@ -200,6 +213,7 @@ class LobbyMaker {
 
                 // for every spoken language we make a new group query
                 foreach ($langs as $lang){
+		      echo "\nlooking for $lang speaking players";
                       $qLevelThree = '
                           SELECT  count(user.steam_id) AS size, 
                                   GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
@@ -239,10 +253,9 @@ class LobbyMaker {
                         $userCounter = 0 ; 
                         for ($i = 0; $i != $ammountOfTeamsInGroup ; $i++){
                           $lobbies->addLobby($qualityLevel); 
-                          for ($i = 0 ; $i != 5 ; $i++) // add exactly 5 users into a team
+                          for ($j = 0 ; $j != 5 ; $j++) // add exactly 5 users into a team
                             $lobbies->lastLobby()->addMember($users[$userCounter++]);
                         }
-                        
 		}
                 // move the players now so that we don't try to lobbie people twice on level 3
                 self::movePlayers();

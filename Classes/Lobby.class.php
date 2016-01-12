@@ -17,7 +17,7 @@ class Lobby {
 	}
 
 	function isComplete(){
-		if ( count($this->members) == 4 && isset($lobbyLeader) )
+		if ( count($this->members) == 4 && $this->lobbyLeader )
 			return TRUE;
 		else	
 			return FALSE;
