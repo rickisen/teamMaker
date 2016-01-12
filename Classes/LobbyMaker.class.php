@@ -110,11 +110,16 @@ class LobbyMaker {
 		';
 
 		// query the db and put all the losers currently in there into new lobbies
-		$result = $database->query($qLevelZero);
-		while( $row = $result->fetch_assoc()){
-			// add the current user into the newest lobby
-			$lobbies->addMember($row['steam_id'], 0);
-		}
+                if( $result = $database->query($qLevelZero)) {
+                  while( $row = $result->fetch_assoc()){
+                    // add the current user into the newest lobby
+                    $lobbies->addMember($row['steam_id'], 0);
+                  }
+                } 
+
+                if ($database->error){
+                  echo "something wrong with levelZero: ".$database-error;
+                }
 
                 self::movePlayers(); // is usually run by HandleGroupResults
 	}
@@ -138,6 +143,10 @@ class LobbyMaker {
                 if( $result = $database->query($qLevelOne)){
                   self::HandleGroupResults($result, 1);
                 } 
+
+                if ($database->error){
+                  echo "something wrong with levelOne: ".$database-error;
+                }
 	}
 
 	static function levelTwo(){
@@ -159,6 +168,10 @@ class LobbyMaker {
                 if( $result = $database->query($qLevelTwo)){
                   self::HandleGroupResults($result, 2);
                 } 
+
+                if ($database->error){
+                  echo "something wrong with levelTwo: ".$database-error;
+                }
 	}
 
 	static function levelThree(){
@@ -206,6 +219,10 @@ class LobbyMaker {
                       if( $result = $database->query($qLevelThree)){
                         self::HandleGroupResults($result, 3);
                       } 
+
+                      if ($database->error){
+                        echo "something wrong with levelThree on language $lang: ".$database-error;
+                      }
                 }
 	}
 
@@ -227,7 +244,6 @@ class LobbyMaker {
                         }
                         
 		}
-
                 // move the players now so that we don't try to lobbie people twice on level 3
                 self::movePlayers();
         }
