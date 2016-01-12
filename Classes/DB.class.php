@@ -1,6 +1,6 @@
 <?php
 
-class DB{
+class DB {
 	private static $instance;
 	private function __construct(){}
 	private function __clone(){}
