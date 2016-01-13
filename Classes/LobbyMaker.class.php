@@ -225,7 +225,7 @@ class LobbyMaker {
 
           WHERE  primary_language   = "'.$lang.'"
              OR  secondary_language = "'.$lang.'"
-             AND started_looking < (NOW() - INTERVAL 2 MINUTE)
+             -- AND started_looking < (NOW() - INTERVAL 2 MINUTE)
 
           GROUP BY rank, age_group
           HAVING size >= 5
