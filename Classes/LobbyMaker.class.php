@@ -109,7 +109,7 @@ class LobbyMaker {
         SELECT  user.steam_id 
         FROM    player_looking_for_lobby LEFT JOIN user
         ON player_looking_for_lobby.steam_id = user.steam_id
-        WHERE   started_looking < (UNIX_TIMESTAMP() - 250)
+        WHERE   started_looking < (NOW() - INTERVAL 5 MINUTE)
         ORDER BY rank, age_group, country
     ';
 
@@ -138,7 +138,7 @@ class LobbyMaker {
         FROM   player_looking_for_lobby LEFT JOIN user 
            ON player_looking_for_lobby.steam_id = user.steam_id 
 
-        WHERE   started_looking < (UNIX_TIMESTAMP() - 200)
+        WHERE   started_looking < (NOW() - INTERVAL 4 MINUTE)
         GROUP BY rank
         HAVING size >= 5
     ';
@@ -164,7 +164,7 @@ class LobbyMaker {
         FROM   player_looking_for_lobby LEFT JOIN user 
            ON player_looking_for_lobby.steam_id = user.steam_id 
 
-        WHERE   started_looking < (UNIX_TIMESTAMP() - 150)
+        WHERE   started_looking < (NOW() - INTERVAL 3 MINUTE)
         GROUP BY rank, age_group
         HAVING size >= 5
     ';
@@ -225,7 +225,7 @@ class LobbyMaker {
 
           WHERE  primary_language   = "'.$lang.'"
              OR  secondary_language = "'.$lang.'"
-             AND started_looking < (UNIX_TIMESTAMP() - 100)
+             AND started_looking < (NOW() - INTERVAL 2 MINUTE)
 
           GROUP BY rank, age_group
           HAVING size >= 5
