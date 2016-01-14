@@ -6,10 +6,12 @@ class Lobby {
   private $lobbyLeader;
   private $members = array();
   private $lobbyId;
+  private $created;
 
   function __construct($quality){
     $this->quality = $quality;
     $this->lobbyId = uniqid();
+    $this->created = date("Y-m-d H:i:s");
   }
 
   function __get($name){
@@ -34,7 +36,7 @@ class Lobby {
       OR steam_id 	 = '.$this->members[2].'
       OR steam_id 	 = '.$this->members[3].'
       OR steam_id 	 = '.$this->members[4].'
-      ORDER BY register_date DESC
+      ORDER BY register_date ASC
       LIMIT 1
     ';
 

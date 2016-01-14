@@ -55,10 +55,10 @@ class LobbyMaker {
     foreach ($lobbies->lobbies as $lobby){
       if ($lobby->isComplete()){
         // first move the leader, and then all his minions
-        self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, TRUE);
+        self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
         foreach ($lobby->members as $teamMember){
         	if($teamMember != $lobby->lobbyLeader)
-          		self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, FALSE);
+          		self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
         }
       }
     }
@@ -68,7 +68,7 @@ class LobbyMaker {
     self::resetLobbyHolder();
   }
 
-  static function movePlayer($player, $lobbyId, $quality, $isLeader = FALSE) {
+  static function movePlayer($player, $lobbyId, $quality, $created,  $isLeader = FALSE) {
     $database = DB::getInstance() ;
 
     // convert from bool to int
@@ -79,8 +79,8 @@ class LobbyMaker {
     
     // move player into the lobby table
     $qMoveMember = '
-      INSERT INTO lobby (lobby_id, steam_id, quality, is_leader)
-      VALUES ("'.$lobbyId.'","'.$player.'","'.$quality.'", '.$isLeader.');
+      INSERT INTO lobby (lobby_id, steam_id, quality, created, is_leader)
+      VALUES ("'.$lobbyId.'","'.$player.'","'.$quality.'", "'.$created.'", '.$isLeader.');
     ';
 
     $database->query($qMoveMember);
