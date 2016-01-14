@@ -88,7 +88,7 @@ class LobbyMaker {
       return FALSE;
     }
 
-    //remove the user from the pool of players that are looking for teams
+    //remove the user from the pool of players that are looking for teams, asd
     $qDeletePlayer = '
       DELETE FROM player_looking_for_lobby 
       WHERE steam_id = '.$player.'
