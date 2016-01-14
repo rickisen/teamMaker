@@ -81,10 +81,11 @@ class LobbyMaker {
       INSERT INTO lobby (lobby_id, steam_id, quality, is_leader)
       VALUES ("'.$lobbyId.'","'.$player.'","'.$quality.'", '.$isLeader.');
     ';
-                $database->query($qMoveMember);
+
+    $database->query($qMoveMember);
     if ($error = $database->error){
       echo "Something went wrong when trying to move player $player into lobby $lobbyId : ".$error;
-      break;
+      return FALSE;
     }
 
     //remove the user from the pool of players that are looking for teams
@@ -92,10 +93,11 @@ class LobbyMaker {
       DELETE FROM player_looking_for_lobby 
       WHERE steam_id = '.$player.'
     ';
+
     $database->query($qDeletePlayer);
     if ($error = $database->error){
       echo "Something went wrong when trying to remove player $player from PLFL: ".$error;
-      break;
+      return FALSE;
     }
   }
 
@@ -133,7 +135,7 @@ class LobbyMaker {
 
     $qLevelOne = '
         SELECT  count(user.steam_id) AS size, 
-          GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC, age_group, primary_language, secondary_language) AS users
+                GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
 
         FROM   player_looking_for_lobby LEFT JOIN user 
            ON player_looking_for_lobby.steam_id = user.steam_id 
@@ -159,7 +161,7 @@ class LobbyMaker {
 
     $qLevelTwo = '
         SELECT  count(user.steam_id) AS size, 
-          GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC, primary_language, secondary_language) AS users
+          GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
 
         FROM   player_looking_for_lobby LEFT JOIN user 
            ON player_looking_for_lobby.steam_id = user.steam_id 
