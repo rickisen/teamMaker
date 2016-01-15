@@ -46,26 +46,31 @@ class LobbyMaker {
     }
   }
 
+  static function logLevel($level) {
+    echo "\n".date('H:i:s')." running quality level $level ========================================| \n";
+  }
+
   static function movePlayers() {
     $lobbies  = self::getLobbyHolder();
     
-    if ($numOfLobbies = count($lobbies->lobbies) > 0)
+    if ($numOfLobbies = count($lobbies->lobbies) > 0){
       echo "created $numOfLobbies lobbies \n";
 
-    foreach ($lobbies->lobbies as $lobby){
-      if ($lobby->isComplete()){
-        // first move the leader, and then all his minions
-        self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
-        foreach ($lobby->members as $teamMember){
-        	if($teamMember != $lobby->lobbyLeader)
-          		self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
+      foreach ($lobbies->lobbies as $lobby){
+        if ($lobby->isComplete()){
+          // first move the leader, and then all his minions
+          self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
+          foreach ($lobby->members as $teamMember){
+                  if($teamMember != $lobby->lobbyLeader)
+                          self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
+          }
         }
       }
-    }
 
-    // once we've copied all players from our lobbyHolder, we 
-    // delete it and create a new lobbyHolder
-    self::resetLobbyHolder();
+      // once we've copied all players from our lobbyHolder, we 
+      // delete it and create a new lobbyHolder
+      self::resetLobbyHolder();
+    }
   }
 
   static function movePlayer($player, $lobbyId, $quality, $created,  $isLeader = FALSE) {
@@ -118,6 +123,7 @@ class LobbyMaker {
 
     // query the db and put all the losers currently in there into new lobbies
     if( $result = $database->query($qLevelZero)) {
+      self::logLevel(0);
       while( $row = $result->fetch_assoc()){
         // add the current user into the newest lobby
         $lobbies->addMember($row['steam_id'], 0);
@@ -148,6 +154,7 @@ class LobbyMaker {
     
     // query the db, and if we got some results, handle the properly
     if( $result = $database->query($qLevelOne)){
+      self::logLevel(1);
       self::HandleGroupResults($result, 1);
     } 
 
@@ -174,6 +181,7 @@ class LobbyMaker {
     
     // query the db, and if we got some results, handle them properly
     if( $result = $database->query($qLevelTwo)){
+      self::logLevel(2);
       self::HandleGroupResults($result, 2);
     } 
 
@@ -216,6 +224,8 @@ class LobbyMaker {
     // this makes sure that there is only one copy 
     // of every spoken language in this array
     $langs = array_unique($langs);
+      
+    self::logLevel(3);
 
     // for every spoken language we make a new group query
     foreach ($langs as $lang){
@@ -233,7 +243,7 @@ class LobbyMaker {
           GROUP BY rank, age_group
           HAVING size >= 5
       ';
-      
+
       // query the db, and if we got some results, handle them properly
       if( $result = $database->query($qLevelThree)){
         if ( $numberOfRows = $result->num_rows > 0 ){
