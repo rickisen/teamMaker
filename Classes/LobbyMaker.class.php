@@ -125,11 +125,13 @@ class LobbyMaker {
     ';
 
     // query the db and put all the losers currently in there into new lobbies
-    if( $result = $database->query($qLevelZero) && $result->num_rows > 0 ) {
-      self::logLevel(0);
-      while( $row = $result->fetch_assoc()){
-        // add the current user into the newest lobby
-        $lobbies->addMember($row['steam_id'], 0);
+    if( $result = $database->query($qLevelZero) ) {
+      if ($result->num_rows > 4) {
+        self::logLevel(0);
+        while( $row = $result->fetch_assoc()){
+          // add the current user into the newest lobby
+          $lobbies->addMember($row['steam_id'], 0);
+        }
       }
     } elseif ($error = $database->error){
       echo "something wrong with levelZero: ".$error;
@@ -154,8 +156,10 @@ class LobbyMaker {
     ';
     
     // query the db, and if we got some results, handle the properly
-    if( $result = $database->query($qLevelOne) && $result->num_rows > 0){
-      self::HandleGroupResults($result, 1);
+    if( $result = $database->query($qLevelOne) ){
+        if ( $numberOfRows = $result->num_rows > 0 ){
+	  self::HandleGroupResults($result, 2);
+	}
     } 
 
     if ($error = $database->error){
@@ -180,8 +184,10 @@ class LobbyMaker {
     ';
     
     // query the db, and if we got some results, handle them properly
-    if( $result = $database->query($qLevelTwo) && $result->num_rows > 0){
-      self::HandleGroupResults($result, 2);
+    if( $result = $database->query($qLevelTwo) ){
+        if ( $numberOfRows = $result->num_rows > 0 ){
+	  self::HandleGroupResults($result, 2);
+	}
     } 
 
     if ($error = $database->error){
