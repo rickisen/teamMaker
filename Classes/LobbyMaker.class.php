@@ -52,9 +52,9 @@ class LobbyMaker {
 
   static function movePlayers() {
     $lobbies  = self::getLobbyHolder();
-    
-    if ($numOfLobbies = count($lobbies->lobbies) > 0){
-      echo "created $numOfLobbies lobbies \n";
+	
+    if ( count($lobbies->lobbies) > 0){
+      $numOfLobbiesCreated = 0 ;
 
       foreach ($lobbies->lobbies as $lobby){
         if ($lobby->isComplete()){
@@ -64,8 +64,11 @@ class LobbyMaker {
                   if($teamMember != $lobby->lobbyLeader)
                           self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
           }
+          $numOfLobbiesCreated++ ;
         }
       }
+
+      echo "created $numOfLobbiesCreated lobbies \n";
 
       // once we've copied all players from our lobbyHolder, we 
       // delete it and create a new lobbyHolder
@@ -122,15 +125,13 @@ class LobbyMaker {
     ';
 
     // query the db and put all the losers currently in there into new lobbies
-    if( $result = $database->query($qLevelZero)) {
+    if( $result = $database->query($qLevelZero) && $result->num_rows > 0 ) {
       self::logLevel(0);
       while( $row = $result->fetch_assoc()){
         // add the current user into the newest lobby
         $lobbies->addMember($row['steam_id'], 0);
       }
-    } 
-
-    if ($error = $database->error){
+    } elseif ($error = $database->error){
       echo "something wrong with levelZero: ".$error;
     }
 
@@ -153,8 +154,7 @@ class LobbyMaker {
     ';
     
     // query the db, and if we got some results, handle the properly
-    if( $result = $database->query($qLevelOne)){
-      self::logLevel(1);
+    if( $result = $database->query($qLevelOne) && $result->num_rows > 0){
       self::HandleGroupResults($result, 1);
     } 
 
@@ -180,8 +180,7 @@ class LobbyMaker {
     ';
     
     // query the db, and if we got some results, handle them properly
-    if( $result = $database->query($qLevelTwo)){
-      self::logLevel(2);
+    if( $result = $database->query($qLevelTwo) && $result->num_rows > 0){
       self::HandleGroupResults($result, 2);
     } 
 
@@ -225,8 +224,6 @@ class LobbyMaker {
     // of every spoken language in this array
     $langs = array_unique($langs);
       
-    self::logLevel(3);
-
     // for every spoken language we make a new group query
     foreach ($langs as $lang){
       $qLevelThree = '
@@ -260,6 +257,8 @@ class LobbyMaker {
 
   static function HandleGroupResults($GResult, $qualityLevel){
     $lobbies  = self::getLobbyHolder();
+    self::logLevel($qualityLevel);
+
     while ($group = $GResult->fetch_assoc()) {
       $users = explode(',', $group['users'] );
       $ammountOfTeamsInGroup = ($group['size'] - ( $group['size'] % 5 )) / 5  ;
