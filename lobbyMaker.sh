@@ -1,6 +1,6 @@
 #!/bin/bash
 cd /home/teammaker/teamMaker/
-time=$(date +%H:%m:%S)
+time=$(date +%H:%M:%S)
 echo 
 echo "runing every 5 seconds from now, $time "
 
