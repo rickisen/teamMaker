@@ -37,7 +37,7 @@ for ($i = 0 ; $i != $NumberOfUsersToInsert ; $i++){
     // create the user object and upload it
     $user = new User($id);
     if($user->insertIntoPLFL())
-      echo 'moved '.$user->steam_id.' into PLFL';
+      echo $user->steam_id." ---> PLFL \n";
 
     // add the id to the in-use-list
     $idsInUse[] = $id;
@@ -45,7 +45,7 @@ for ($i = 0 ; $i != $NumberOfUsersToInsert ; $i++){
     // wait for a while so we get natural data
     sleep(rand(1,5));
   } else {
-    echo "failed to find an id not already in use";
+    echo "failed to find an id not already in use \n";
   }
 }
 
