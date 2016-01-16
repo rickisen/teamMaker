@@ -26,28 +26,36 @@ class Lobby {
   }
 
   function findLeader(){
-  	$database = DB::getInstance();
+     $database = DB::getInstance();
 
-  	$qGetLobbyLeader = '
-      SELECT user.steam_id
-      FROM user
-      WHERE steam_id = '.$this->members[0].'
-      OR steam_id 	 = '.$this->members[1].'
-      OR steam_id 	 = '.$this->members[2].'
-      OR steam_id 	 = '.$this->members[3].'
-      OR steam_id 	 = '.$this->members[4].'
-      ORDER BY register_date ASC
-      LIMIT 1
+     // dynamically build this query to maintain compatibility 
+     // with when a lobby consists of less than 5 members
+     // 
+     // first part of the query:
+     $qGetLobbyLeader = '
+          SELECT user.steam_id
+          FROM user
+          WHERE steam_id = '.$this->members[0]; 
+
+     // add every elses steam id to the query
+     for ($i = 1 ; $i != count($this->members) ; $i++){
+       $qGetLobbyLeader .= ' OR steam_id = '.$this->members[$i];
+     }
+
+     // and the rest of the query
+     $qGetLobbyLeader .= '
+          ORDER BY register_date ASC
+          LIMIT 1
     ';
 
     if($result = $database->query($qGetLobbyLeader)){
     	$this->lobbyLeader = $result->fetch_assoc()['steam_id'];
     	return TRUE;
-    }
-    elseif($error = $database->error){
+    } elseif($error = $database->error){
     	echo "couldn't find a lobby leader: $error";
     	return FALSE;
     }
+    return FALSE;
   }
 
   function addMember($member){
