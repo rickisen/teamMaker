@@ -166,7 +166,7 @@ class LobbyMaker {
     // query the db and put all the losers currently in there into new lobbies
     if( $result = $database->query($qLevelOne) ) {
       if ($result->num_rows > 3) {
-        self::logLevel(0);
+        self::logLevel(1);
         while( $row = $result->fetch_assoc()){
           // add the current user into the newest lobby
           $lobbies->addMember($row['steam_id'], 1);
