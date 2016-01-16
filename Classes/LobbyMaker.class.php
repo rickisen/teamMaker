@@ -123,7 +123,7 @@ class LobbyMaker {
         FROM    player_looking_for_lobby LEFT JOIN user
         ON player_looking_for_lobby.steam_id = user.steam_id
         WHERE   started_looking < (NOW() - INTERVAL 5 MINUTE)
-        ORDER BY rank, age_group, country
+        ORDER BY rank, age_group, primary_language
     ';
 
     // query the db and put all the losers currently in there into new lobbies
@@ -146,29 +146,33 @@ class LobbyMaker {
 
   static function levelOne(){
     $database = DB::getInstance() ;
+    $lobbies  = self::getLobbyHolder();
 
+    // query to get all semi losers
     $qLevelOne = '
-        SELECT  count(user.steam_id) AS size, 
-                GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
-
-        FROM   player_looking_for_lobby LEFT JOIN user 
-           ON player_looking_for_lobby.steam_id = user.steam_id 
-
+        SELECT  user.steam_id 
+        FROM    player_looking_for_lobby LEFT JOIN user
+        ON player_looking_for_lobby.steam_id = user.steam_id
         WHERE   started_looking < (NOW() - INTERVAL 4 MINUTE)
-        GROUP BY rank
-        HAVING size >= 5
+        ORDER BY rank, primary_language, age_group
     ';
-    
-    // query the db, and if we got some results, handle the properly
-    if( $result = $database->query($qLevelOne) ){
-        if ( $numberOfRows = $result->num_rows > 0 ){
-	  self::HandleGroupResults($result, 2);
-	}
-    } 
 
-    if ($error = $database->error){
+    // query the db and put all the losers currently in there into new lobbies
+    if( $result = $database->query($qLevelOne) ) {
+      if ($result->num_rows > 3) {
+        self::logLevel(0);
+        while( $row = $result->fetch_assoc()){
+          // add the current user into the newest lobby
+          $lobbies->addMember($row['steam_id'], 1);
+        }
+      }
+    } elseif ($error = $database->error){
       echo "something wrong with levelOne: ".$error;
     }
+    
+    // this is usually run by HandleGroupResults, but this isn't a group result.
+    // And also enable the "move incomplete lobbies" option of the moveplayers function.
+    self::movePlayers(TRUE); 
   }
 
   static function levelTwo(){
@@ -177,14 +181,17 @@ class LobbyMaker {
 
     $qLevelTwo = '
         SELECT  count(user.steam_id) AS size, 
-          GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
+                GROUP_CONCAT(user.steam_id ORDER BY primary_language started_looking ASC) AS users,
+                floor(rank / 2) as halfrank
+                floor(age_group / 2) as halfgroup
+                
 
         FROM   player_looking_for_lobby LEFT JOIN user 
-           ON player_looking_for_lobby.steam_id = user.steam_id 
+           ON  player_looking_for_lobby.steam_id = user.steam_id 
 
-        WHERE   started_looking < (NOW() - INTERVAL 3 MINUTE)
-        GROUP BY rank, age_group
-        HAVING size >= 5
+        WHERE    started_looking < (NOW() - INTERVAL 3 MINUTE)
+        GROUP BY halfrank, halfgroup
+        HAVING   size >= 5
     ';
     
     // query the db, and if we got some results, handle them properly
@@ -238,16 +245,18 @@ class LobbyMaker {
     foreach ($langs as $lang){
       $qLevelThree = '
           SELECT  count(user.steam_id) AS size, 
-                  GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
+                  GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users,
+                  floor(rank / 3) as thirdrank
+                  floor(age_group / 3) as thirdgroup
 
           FROM   player_looking_for_lobby LEFT JOIN user 
                    ON player_looking_for_lobby.steam_id = user.steam_id 
 
           WHERE  primary_language   = "'.$lang.'"
              OR  secondary_language = "'.$lang.'"
-             -- AND started_looking < (NOW() - INTERVAL 2 MINUTE)
+            AND  started_looking < (NOW() - INTERVAL 1 MINUTE)
 
-          GROUP BY rank, age_group
+          GROUP BY thirdrank, thirdgroup
           HAVING size >= 5
       ';
 
@@ -261,6 +270,140 @@ class LobbyMaker {
 
       if ($error = $database->error){
         echo "something wrong with levelThree on language $lang: ".$error;
+      }
+    }
+  }
+
+  static function levelFour(){
+    $lobbies  = self::getLobbyHolder();
+    $database = DB::getInstance() ;
+
+    // Queries that gets all languages that have speakers in the db
+    $qGetAllPriLangs = ' 
+          SELECT DISTINCT primary_language 
+          FROM user 
+          WHERE primary_language IS NOT NULL 
+            AND primary_language != ""';
+
+    $qGetAllSecLangs = ' 
+          SELECT DISTINCT secondary_language 
+          FROM user 
+          WHERE secondary_language IS NOT NULL 
+            AND secondary_language != ""';
+
+    // this will come to hold all the spoken languages, both primary and secondary
+    $langs = array(); 
+
+    // add all primary languages into langs
+    $priLangResult = $database->query($qGetAllPriLangs);
+    while ($row = $priLangResult->fetch_assoc())
+      $langs[] = $row['primary_language'];
+
+    // and secondaries
+    $secLangResult = $database->query($qGetAllSecLangs);
+    while ($row = $secLangResult->fetch_assoc())
+      $langs[] = $row['secondary_language'];
+
+
+    // this makes sure that there is only one copy 
+    // of every spoken language in this array
+    $langs = array_unique($langs);
+      
+    // for every spoken language we make a new group query
+    foreach ($langs as $lang){
+      $qLevelFour = '
+          SELECT  count(user.steam_id) AS size, 
+                  GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
+                  floor(rank / 2) as halfrank
+                  floor(age_group / 2) as halfgroup
+
+          FROM   player_looking_for_lobby LEFT JOIN user 
+                   ON player_looking_for_lobby.steam_id = user.steam_id 
+
+          WHERE  primary_language   = "'.$lang.'"
+             OR  secondary_language = "'.$lang.'"
+             AND started_looking < (NOW() - INTERVAL 30 SECOND)
+
+          GROUP BY halfrank, halfgroup
+          HAVING size >= 5
+      ';
+
+      // query the db, and if we got some results, handle them properly
+      if( $result = $database->query($qLevelFour)){
+        if ( $numberOfRows = $result->num_rows > 0 ){
+          echo "found ".$numberOfRows." $lang speaking player groups \n";
+          self::HandleGroupResults($result, 3);
+        }
+      } 
+
+      if ($error = $database->error){
+        echo "something wrong with levelFour on language $lang: ".$error;
+      }
+    }
+  }
+
+  static function levelFive(){
+    $lobbies  = self::getLobbyHolder();
+    $database = DB::getInstance() ;
+
+    // Queries that gets all languages that have speakers in the db
+    $qGetAllPriLangs = ' 
+          SELECT DISTINCT primary_language 
+          FROM user 
+          WHERE primary_language IS NOT NULL 
+            AND primary_language != ""';
+
+    $qGetAllSecLangs = ' 
+          SELECT DISTINCT secondary_language 
+          FROM user 
+          WHERE secondary_language IS NOT NULL 
+            AND secondary_language != ""';
+
+    // this will come to hold all the spoken languages, both primary and secondary
+    $langs = array(); 
+
+    // add all primary languages into langs
+    $priLangResult = $database->query($qGetAllPriLangs);
+    while ($row = $priLangResult->fetch_assoc())
+      $langs[] = $row['primary_language'];
+
+    // and secondaries
+    $secLangResult = $database->query($qGetAllSecLangs);
+    while ($row = $secLangResult->fetch_assoc())
+      $langs[] = $row['secondary_language'];
+
+
+    // this makes sure that there is only one copy 
+    // of every spoken language in this array
+    $langs = array_unique($langs);
+      
+    // for every spoken language we make a new group query
+    foreach ($langs as $lang){
+      $qLevelFive = '
+          SELECT  count(user.steam_id) AS size, 
+                  GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
+
+          FROM   player_looking_for_lobby LEFT JOIN user 
+                   ON player_looking_for_lobby.steam_id = user.steam_id 
+
+          WHERE  primary_language   = "'.$lang.'"
+             OR  secondary_language = "'.$lang.'"
+             AND started_looking < (NOW() - INTERVAL 1 SECOND)
+
+          GROUP BY rank, age_group
+          HAVING size >= 5
+      ';
+
+      // query the db, and if we got some results, handle them properly
+      if( $result = $database->query($qLevelFive)){
+        if ( $numberOfRows = $result->num_rows > 0 ){
+          echo "found ".$numberOfRows." $lang speaking player groups \n";
+          self::HandleGroupResults($result, 3);
+        }
+      } 
+
+      if ($error = $database->error){
+        echo "something wrong with levelFive on language $lang: ".$error;
       }
     }
   }
