@@ -36,9 +36,10 @@ for ($i = 0 ; $i != $NumberOfUsersToInsert ; $i++){
 
     // create the user object and upload it
     $user = new User($id);
-    $user->insertIntoPLFL();
+    if($user->insertIntoPLFL())
+      echo 'moved '.$user->steam_id.' into PLFL';
 
-    // add to the id to the in-use-list
+    // add the id to the in-use-list
     $idsInUse[] = $id;
 
     // wait for a while so we get natural data
@@ -81,8 +82,11 @@ class User{
     $database = DB::getInstance();
     $qInsert = 'INSERT INTO player_looking_for_lobby (steam_id) VALUES ('.$this->steam_id.')';
     $database->query($qInsert);
-    if ($error = $database->error)
+    if ($error = $database->error){
       echo "something went wrong when trying to move user ".$this->steam_id." into PLFL: $error ";
+      return FALSE;
+    }
+    return TRUE;
   }
 }
 

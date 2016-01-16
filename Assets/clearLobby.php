@@ -7,6 +7,9 @@ $database->query($qClearOldLobbies);
 
 if ($error = $database->error)
   echo "something went wrong when clearing old lobbies: $error";
+elseif ($rows = $database->affected_rows)
+  echo "removed $rows users from their old lobbies";
+
 
 
 // CLASSES =====================================================================
