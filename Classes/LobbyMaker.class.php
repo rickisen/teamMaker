@@ -181,7 +181,7 @@ class LobbyMaker {
 
     $qLevelTwo = '
         SELECT  count(user.steam_id) AS size, 
-                GROUP_CONCAT(user.steam_id ORDER BY primary_language started_looking ASC) AS users,
+                GROUP_CONCAT(user.steam_id ORDER BY primary_language, started_looking ASC) AS users,
                 floor(rank / 2) as halfrank,
                 floor(age_group / 2) as halfgroup
                 
