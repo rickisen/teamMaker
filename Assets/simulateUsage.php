@@ -11,12 +11,19 @@ if( $result = $database->query($qGetUsers) ){
 } else $totalAmmountOfUsers = 100 ; 
 
 // remember theese ID's so that we dont try to put a 
-// user into PLFL who is already in a lobby
-$usersAlreadyInLobbies = array();
+// user into PLFL who is already in a lobby or PLFL
+$idsInUse = array();
 $qGetUsersAlreadyInLobbies =  ' SELECT id from lobby left join user on lobby.steam_id = user.steam_id';
 if( $result = $database->query($qGetUsersAlreadyInLobbies) ){
   while ($row = $result->fetch_assoc()){
-    $usersAlreadyInLobbies[] = $row['id'];
+    $idsInUse[] = $row['id'];
+  }
+}
+//same but for PLFL
+$qGetUsersAlreadyInPLFL =  ' SELECT id from player_looking_for_lobby left join user on player_looking_for_lobby.steam_id = user.steam_id';
+if( $result = $database->query($qGetUsersAlreadyInPLFL) ){
+  while ($row = $result->fetch_assoc()){
+    $idsInUse[] = $row['id'];
   }
 }
 
@@ -24,25 +31,31 @@ if( $result = $database->query($qGetUsersAlreadyInLobbies) ){
 $NumberOfUsersToInsert = rand(5,10);
 for ($i = 0 ; $i != $NumberOfUsersToInsert ; $i++){
 
-  // get an id that is not already in a lobby
-  $randomUserId = randIdNotInLobby($totalAmmountOfUsers, $usersAlreadyInLobbies);
+  // try to get an id that is not already in a lobby or PLFL
+  if ($id = randIntNotInUse($totalAmmountOfUsers, $idsInUse)){
 
-  // create the user object and upload it
-  $user = new User($randomUserId);
-  $user->insertIntoPLFL();
+    // create the user object and upload it
+    $user = new User($id);
+    $user->insertIntoPLFL();
 
-  // wait for a while so we get natural data
-  sleep(rand(1,5));
+    // add to the id to the in-use-list
+    $idsInUse[] = $id;
+
+    // wait for a while so we get natural data
+    sleep(rand(1,5));
+  } else {
+    echo "failed to find an id not already in use";
+  }
 }
 
 // Functions =====================================================================
-function randIdNotInLobby($maxNumber, $lobby, $try = 0){
+function randIntNotInUse($maxNumber, $arr, $try = 0){
   if ($try > 500 ) return FALSE;
   $number = rand(1, $maxNumber);
-  if (! in_array($number, $lobby))
+  if (! in_array($number, $arr))
     return $number;
   else 
-    return randIdNotInLobby($maxNumber, $lobby, ++$try);
+    return randIntNotInUse($maxNumber, $arr, ++$try);
 }
 
 // CLASSES =====================================================================
