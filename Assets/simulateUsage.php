@@ -25,7 +25,7 @@ $NumberOfUsersToInsert = rand(5,10);
 for ($i = 0 ; $i != $NumberOfUsersToInsert ; $i++){
 
   // get an id that is not already in a lobby
-  $randomUserId = randIdNotInLobby($totalAmmountOfUsers);
+  $randomUserId = randIdNotInLobby($totalAmmountOfUsers, $usersAlreadyInLobbies);
 
   // create the user object and upload it
   $user = new User($randomUserId);
@@ -36,13 +36,13 @@ for ($i = 0 ; $i != $NumberOfUsersToInsert ; $i++){
 }
 
 // Functions =====================================================================
-function randIdNotInLobby($maxNumber, $try = 0){
+function randIdNotInLobby($maxNumber, $lobby, $try = 0){
   if ($try > 500 ) return FALSE;
   $number = rand(1, $maxNumber);
-  if (! in_array($number, $usersAlreadyInLobbies))
+  if (! in_array($number, $lobby))
     return $number;
   else 
-    return randIdNotInLobby($maxNumber, ++$try);
+    return randIdNotInLobby($maxNumber, $lobby, ++$try);
 }
 
 // CLASSES =====================================================================
