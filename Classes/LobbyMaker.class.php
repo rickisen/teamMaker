@@ -46,27 +46,34 @@ class LobbyMaker {
     }
   }
 
+  static function logLevel($level) {
+    echo "\n".date('H:i:s')." running quality level $level ========================================| \n";
+  }
+
   static function movePlayers($moveIncompleteLobbies = FALSE) {
     $lobbies  = self::getLobbyHolder();
-    
-    if ($numOfLobbies = count($lobbies->lobbies) > 0)
-      echo "created $numOfLobbies lobbies \n";
+	
+    if ( count($lobbies->lobbies) > 0){
+      $numOfLobbiesCreated = 0 ;
 
-    // only move lobbies that are complete, (aka have 5 members), unless otherwise specified.
-    foreach ($lobbies->lobbies as $lobby){
-      if ($lobby->isComplete() || $moveIncompleteLobbies){
-        // first move the leader, and then all his minions
-        self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
-        foreach ($lobby->members as $teamMember){
-        	if($teamMember != $lobby->lobbyLeader)
-          		self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
+      foreach ($lobbies->lobbies as $lobby){
+        if ($lobby->isComplete() || $moveIncompleteLobbies){
+          // first move the leader, and then all his minions
+          self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
+          foreach ($lobby->members as $teamMember){
+                  if($teamMember != $lobby->lobbyLeader)
+                          self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
+          }
+          $numOfLobbiesCreated++ ;
         }
       }
-    }
 
-    // once we've copied all players from our lobbyHolder, we 
-    // delete it and create a new lobbyHolder
-    self::resetLobbyHolder();
+      echo "created $numOfLobbiesCreated lobbies \n";
+
+      // once we've copied all players from our lobbyHolder, we 
+      // delete it and create a new lobbyHolder
+      self::resetLobbyHolder();
+    }
   }
 
   static function movePlayer($player, $lobbyId, $quality, $created,  $isLeader = FALSE) {
@@ -118,14 +125,15 @@ class LobbyMaker {
     ';
 
     // query the db and put all the losers currently in there into new lobbies
-    if( $result = $database->query($qLevelZero)) {
-      while( $row = $result->fetch_assoc()){
-        // add the current user into the newest lobby
-        $lobbies->addMember($row['steam_id'], 0);
+    if( $result = $database->query($qLevelZero) ) {
+      if ($result->num_rows > 4) {
+        self::logLevel(0);
+        while( $row = $result->fetch_assoc()){
+          // add the current user into the newest lobby
+          $lobbies->addMember($row['steam_id'], 0);
+        }
       }
-    } 
-
-    if ($error = $database->error){
+    } elseif ($error = $database->error){
       echo "something wrong with levelZero: ".$error;
     }
     
@@ -150,8 +158,10 @@ class LobbyMaker {
     ';
     
     // query the db, and if we got some results, handle the properly
-    if( $result = $database->query($qLevelOne)){
-      self::HandleGroupResults($result, 1);
+    if( $result = $database->query($qLevelOne) ){
+        if ( $numberOfRows = $result->num_rows > 0 ){
+	  self::HandleGroupResults($result, 2);
+	}
     } 
 
     if ($error = $database->error){
@@ -176,8 +186,10 @@ class LobbyMaker {
     ';
     
     // query the db, and if we got some results, handle them properly
-    if( $result = $database->query($qLevelTwo)){
-      self::HandleGroupResults($result, 2);
+    if( $result = $database->query($qLevelTwo) ){
+        if ( $numberOfRows = $result->num_rows > 0 ){
+	  self::HandleGroupResults($result, 2);
+	}
     } 
 
     if ($error = $database->error){
@@ -219,7 +231,7 @@ class LobbyMaker {
     // this makes sure that there is only one copy 
     // of every spoken language in this array
     $langs = array_unique($langs);
-
+      
     // for every spoken language we make a new group query
     foreach ($langs as $lang){
       $qLevelThree = '
@@ -236,7 +248,7 @@ class LobbyMaker {
           GROUP BY rank, age_group
           HAVING size >= 5
       ';
-      
+
       // query the db, and if we got some results, handle them properly
       if( $result = $database->query($qLevelThree)){
         if ( $numberOfRows = $result->num_rows > 0 ){
@@ -253,6 +265,8 @@ class LobbyMaker {
 
   static function HandleGroupResults($GResult, $qualityLevel){
     $lobbies  = self::getLobbyHolder();
+    self::logLevel($qualityLevel);
+
     while ($group = $GResult->fetch_assoc()) {
       $users = explode(',', $group['users'] );
       $ammountOfTeamsInGroup = ($group['size'] - ( $group['size'] % 5 )) / 5  ;
