@@ -338,7 +338,7 @@ class LobbyMaker {
       if( $result = $database->query($qLevelFour)){
         if ( $numberOfRows = $result->num_rows > 0 ){
           echo "found ".$numberOfRows." $lang speaking player groups \n";
-          self::HandleGroupResults($result, 3);
+          self::HandleGroupResults($result, 4);
         }
       } 
 
@@ -406,7 +406,7 @@ class LobbyMaker {
       if( $result = $database->query($qLevelFive)){
         if ( $numberOfRows = $result->num_rows > 0 ){
           echo "found ".$numberOfRows." $lang speaking player groups \n";
-          self::HandleGroupResults($result, 3);
+          self::HandleGroupResults($result, 5);
         }
       } 
 
@@ -472,7 +472,7 @@ class LobbyMaker {
       if( $result = $database->query($qLevelSix)){
         if ( $numberOfRows = $result->num_rows > 0 ){
           echo "found ".$numberOfRows." $lang speaking player groups \n";
-          self::HandleGroupResults($result, 3);
+          self::HandleGroupResults($result, 6);
         }
       } 
 
