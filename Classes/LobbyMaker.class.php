@@ -46,14 +46,15 @@ class LobbyMaker {
     }
   }
 
-  static function movePlayers() {
+  static function movePlayers($moveIncompleteLobbies = FALSE) {
     $lobbies  = self::getLobbyHolder();
     
     if ($numOfLobbies = count($lobbies->lobbies) > 0)
       echo "created $numOfLobbies lobbies \n";
 
+    // only move lobbies that are complete, (aka have 5 members), unless otherwise specified.
     foreach ($lobbies->lobbies as $lobby){
-      if ($lobby->isComplete()){
+      if ($lobby->isComplete() || $moveIncompleteLobbies){
         // first move the leader, and then all his minions
         self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
         foreach ($lobby->members as $teamMember){
@@ -127,8 +128,10 @@ class LobbyMaker {
     if ($error = $database->error){
       echo "something wrong with levelZero: ".$error;
     }
-
-    self::movePlayers(); // is usually run by HandleGroupResults
+    
+    // this is usually run by HandleGroupResults, but this isn't a group result.
+    // And also enable the "move incomplete lobbies" option of the moveplayers function.
+    self::movePlayers(TRUE); 
   }
 
   static function levelOne(){
