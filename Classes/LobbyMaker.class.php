@@ -182,7 +182,7 @@ class LobbyMaker {
     $qLevelTwo = '
         SELECT  count(user.steam_id) AS size, 
                 GROUP_CONCAT(user.steam_id ORDER BY primary_language started_looking ASC) AS users,
-                floor(rank / 2) as halfrank
+                floor(rank / 2) as halfrank,
                 floor(age_group / 2) as halfgroup
                 
 
@@ -246,7 +246,7 @@ class LobbyMaker {
       $qLevelThree = '
           SELECT  count(user.steam_id) AS size, 
                   GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users,
-                  floor(rank / 3) as thirdrank
+                  floor(rank / 3) as thirdrank,
                   floor(age_group / 3) as thirdgroup
 
           FROM   player_looking_for_lobby LEFT JOIN user 
@@ -314,7 +314,7 @@ class LobbyMaker {
       $qLevelFour = '
           SELECT  count(user.steam_id) AS size, 
                   GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
-                  floor(rank / 2) as halfrank
+                  floor(rank / 2) as halfrank,
                   floor(age_group / 2) as halfgroup
 
           FROM   player_looking_for_lobby LEFT JOIN user 
