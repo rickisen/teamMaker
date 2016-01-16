@@ -43,6 +43,12 @@ class LobbyMaker {
     case 4 :
       self::levelFour();
       break;
+    case 5 :
+      self::levelFive();
+      break;
+    case 6 :
+      self::levelSix();
+      break;
     }
   }
 
@@ -322,7 +328,7 @@ class LobbyMaker {
 
           WHERE  primary_language   = "'.$lang.'"
              OR  secondary_language = "'.$lang.'"
-             AND started_looking < (NOW() - INTERVAL 30 SECOND)
+             AND started_looking < (NOW() - INTERVAL 40 SECOND)
 
           GROUP BY halfrank, halfgroup
           HAVING size >= 5
@@ -381,6 +387,74 @@ class LobbyMaker {
     foreach ($langs as $lang){
       $qLevelFive = '
           SELECT  count(user.steam_id) AS size, 
+                  GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users,
+                  floor(rank / 2) as halfrank,
+                  floor(age_group / 3) as thirdgroup
+
+          FROM   player_looking_for_lobby LEFT JOIN user 
+                   ON player_looking_for_lobby.steam_id = user.steam_id 
+
+          WHERE  primary_language   = "'.$lang.'"
+             OR  secondary_language = "'.$lang.'"
+             AND started_looking < (NOW() - INTERVAL 20 SECOND)
+
+          GROUP BY halfrank, thirdgroup
+          HAVING size >= 5
+      ';
+
+      // query the db, and if we got some results, handle them properly
+      if( $result = $database->query($qLevelFive)){
+        if ( $numberOfRows = $result->num_rows > 0 ){
+          echo "found ".$numberOfRows." $lang speaking player groups \n";
+          self::HandleGroupResults($result, 3);
+        }
+      } 
+
+      if ($error = $database->error){
+        echo "something wrong with levelFive on language $lang: ".$error;
+      }
+    }
+  }
+
+  static function levelSix(){
+    $lobbies  = self::getLobbyHolder();
+    $database = DB::getInstance() ;
+
+    // Queries that gets all languages that have speakers in the db
+    $qGetAllPriLangs = ' 
+          SELECT DISTINCT primary_language 
+          FROM user 
+          WHERE primary_language IS NOT NULL 
+            AND primary_language != ""';
+
+    $qGetAllSecLangs = ' 
+          SELECT DISTINCT secondary_language 
+          FROM user 
+          WHERE secondary_language IS NOT NULL 
+            AND secondary_language != ""';
+
+    // this will come to hold all the spoken languages, both primary and secondary
+    $langs = array(); 
+
+    // add all primary languages into langs
+    $priLangResult = $database->query($qGetAllPriLangs);
+    while ($row = $priLangResult->fetch_assoc())
+      $langs[] = $row['primary_language'];
+
+    // and secondaries
+    $secLangResult = $database->query($qGetAllSecLangs);
+    while ($row = $secLangResult->fetch_assoc())
+      $langs[] = $row['secondary_language'];
+
+
+    // this makes sure that there is only one copy 
+    // of every spoken language in this array
+    $langs = array_unique($langs);
+      
+    // for every spoken language we make a new group query
+    foreach ($langs as $lang){
+      $qLevelSix = '
+          SELECT  count(user.steam_id) AS size, 
                   GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
 
           FROM   player_looking_for_lobby LEFT JOIN user 
@@ -395,7 +469,7 @@ class LobbyMaker {
       ';
 
       // query the db, and if we got some results, handle them properly
-      if( $result = $database->query($qLevelFive)){
+      if( $result = $database->query($qLevelSix)){
         if ( $numberOfRows = $result->num_rows > 0 ){
           echo "found ".$numberOfRows." $lang speaking player groups \n";
           self::HandleGroupResults($result, 3);
@@ -403,7 +477,7 @@ class LobbyMaker {
       } 
 
       if ($error = $database->error){
-        echo "something wrong with levelFive on language $lang: ".$error;
+        echo "something wrong with levelSix on language $lang: ".$error;
       }
     }
   }
