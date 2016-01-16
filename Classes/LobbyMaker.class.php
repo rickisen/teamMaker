@@ -128,7 +128,7 @@ class LobbyMaker {
 
     // query the db and put all the losers currently in there into new lobbies
     if( $result = $database->query($qLevelZero) ) {
-      if ($result->num_rows > 0) {
+      if ($result->num_rows > 1) {
         self::logLevel(0);
         while( $row = $result->fetch_assoc()){
           // add the current user into the newest lobby
