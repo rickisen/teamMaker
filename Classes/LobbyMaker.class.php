@@ -47,7 +47,7 @@ class LobbyMaker {
   }
 
   static function logLevel($level) {
-    echo "\n".date('H:i:s')." running quality level $level ========================================| \n";
+    echo "\n".date('H:i:s')." executing quality level $level ========================================| \n";
   }
 
   static function movePlayers($moveIncompleteLobbies = FALSE) {
@@ -58,6 +58,8 @@ class LobbyMaker {
 
       foreach ($lobbies->lobbies as $lobby){
         if ($lobby->isComplete() || $moveIncompleteLobbies){
+	  // if the team is incomplete by this point, there is no leader.
+          if ($moveIncompleteLobbies) $lobby->findLeader(); 
           // first move the leader, and then all his minions
           self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
           foreach ($lobby->members as $teamMember){
@@ -126,11 +128,11 @@ class LobbyMaker {
 
     // query the db and put all the losers currently in there into new lobbies
     if( $result = $database->query($qLevelZero) ) {
-      if ($result->num_rows > 4) {
+      if ($result->num_rows > 0) {
         self::logLevel(0);
         while( $row = $result->fetch_assoc()){
           // add the current user into the newest lobby
-          $lobbies->addMember($row['steam_id'], 0);
+          $lobbies->addMember($row['steam_id'], 1);
         }
       }
     } elseif ($error = $database->error){
