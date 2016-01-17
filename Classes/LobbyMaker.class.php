@@ -229,7 +229,7 @@ class LobbyMaker {
         FROM   player_looking_for_lobby LEFT JOIN user 
            ON  player_looking_for_lobby.steam_id = user.steam_id 
 
-        WHERE    started_looking < (NOW() - INTERVAL 3 MINUTE)
+        WHERE    started_looking < (NOW() - INTERVAL 2 MINUTE)
         GROUP BY halfrank, halfgroup
         HAVING   size >= 5
     ';
