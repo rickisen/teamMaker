@@ -26,8 +26,8 @@ class LobbyHolder {
 
   function addMember($member, $qualityLevel){
     // add new lobby if needed
-    if ($this->lastLobby()->isComplete()) {
-      $this->lobbies[] = new Lobby($qualityLevel);
+    if (empty($this->lobbies) || $this->lastLobby()->isComplete()){
+      $this->addLobby($qualityLevel);
     }
     $this->lastLobby()->addMember($member);
   }

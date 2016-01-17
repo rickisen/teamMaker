@@ -69,8 +69,8 @@ class LobbyMaker {
           // first move the leader, and then all his minions
           self::movePlayer($lobby->lobbyLeader, $lobby->lobbyId, $lobby->quality, $lobby->created, TRUE);
           foreach ($lobby->members as $teamMember){
-                  if($teamMember != $lobby->lobbyLeader)
-                          self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
+            if($teamMember != $lobby->lobbyLeader)
+              self::movePlayer($teamMember, $lobby->lobbyId, $lobby->quality, $lobby->created, FALSE);
           }
           $numOfLobbiesCreated++ ;
         }
