@@ -541,32 +541,96 @@ class LobbyMaker {
   }
 
   static function generateQuery($optionsArr){
-      $formatWithLang = '
-          SELECT  count(user.steam_id) AS size, 
-                  GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
+    // function that generates a dbquery depending on which options are supplied.
+    // It can do two types of select queries, one based on grouping users and one 
+    // simpler based on ordering users.
+    
+    $mode = 'SIMPLE';  // should be overwritten automatically depending on the options supplied
 
-          FROM   player_looking_for_lobby LEFT JOIN user 
-                   ON player_looking_for_lobby.steam_id = user.steam_id 
+    // default values for the parts  ===========================================================|
+    $startedLookingPart  = ' WHERE  started_looking < (NOW() - INTERVAL 5 MINUTE ) ';
+    $languagePart        = ' ';
+    $groupByPart         = ' ';
+    $sizePart            = ' HAVING size >= 5 ';
+    $limitPart           = ' '; 
+    $orderByPart         = ' ORDER BY rank, age_group, primary_language ';
+    $BaseSimpleQuery = '
+      SELECT  user.steam_id
+      FROM    player_looking_for_lobby LEFT JOIN user
+        ON    player_looking_for_lobby.steam_id = user.steam_id ';
+    $BaseGroupQuery = '
+      SELECT  count(user.steam_id) AS size, 
+              GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
 
-          WHERE  primary_language   = %s
-             OR  secondary_language = %s
-             AND started_looking < (NOW() - INTERVAL 1 SECOND)
+      FROM   player_looking_for_lobby LEFT JOIN user 
+        ON   player_looking_for_lobby.steam_id = user.steam_id ';
 
-          GROUP BY %s %s %s
-          HAVING size >= 5
-      ';
+    // FORMATS, if mentioned in the options arr they will overwrite defaults ====================|
+    $FGroupBy1Part       = ' GROUP  BY %s '; 
+    $FGroupBy2Part       = ' GROUP  BY %s, %s '; 
+    $FGroupBy3Part       = ' GROUP  BY %s, %s, %s '; 
+    $FOrderBy1Part       = ' ORDER  BY %s '; 
+    $FOrderBy2Part       = ' ORDER  BY %s, %s '; 
+    $FOrderBy3Part       = ' ORDER  BY %s, %s, %s ';
+    $FSizePart           = ' HAVING size >= %d '; 
+    $FLimitPart          = ' LIMIT %d '; 
+    $FStartedLookingPart = ' WHERE  started_looking < (NOW() - INTERVAL %s ) ';
+    $FLanguagePart = '    
+        AND    primary_language   = %s
+         OR    secondary_language = %s ';
 
-      foreach($optionsArr as $key => $option){
-        switch ($key){
-        case 'lang':
+    // Parse the input options array ========================================|
+    foreach($optionsArr as $key => $option){
+      switch ($key){
+      case 'members':
+        $sizePart           = sprintf($FSizePart, $option);
+        $limitPart          = sprintf($FLimitPart, $option);
+        break;
+      case 'language':
+        $languagePart       = sprintf($FLanguagePart, $option, $option);
+        break;
+      case 'started looking':
+        $startedLookingPart = sprintf($FStartedLookingPart, $option);
+        break;
+      case 'order by':
+        $mode = 'SIMPLE';
+        switch (count($option)){
+        case 3 :
+          $orderByPart  = sprintf($FOrderBy3Part, $option[0], $option[1], $option[2]);
           break;
-        case 'lang':
+        case 2 :
+          $orderByPart  = sprintf($FOrderBy2Part, $option[0], $option[1]);
           break;
-        default:
+        case 1 :
+          $orderByPart  = sprintf($FOrderBy1Part, $option[0]);
           break;
         }
+        break;
+      case 'group by':
+        $mode = 'GROUP';
+        switch (count($option)){
+        case 3 :
+          $groupByPart  = sprintf($FGroupBy3Part, $option[0], $option[1], $option[2]);
+          break;
+        case 2 :
+          $groupByPart  = sprintf($FGroupBy2Part, $option[0], $option[1]);
+          break;
+        case 1 :
+          $groupByPart  = sprintf($FGroupBy1Part, $option[0]);
+          break;
+        }
+        break;
       }
+    }
 
+    // construct the Query depending on mode ========================================|
+    if ($mode == 'SIMPLE'){
+      $query = $BaseSimpleQuery."\n".$startedLookingPart."\n".$languagePart."\n".$orderByPart."\n".$limitPart."\n";
+    }elseif ($mode == 'GROUP'){
+      $query = $BaseGroupQuery."\n".$startedLookingPart."\n".$languagePart."\n".$groupByPart."\n".$sizePart."\n";
+    }
+
+    return $query;
   }
 
   static function getSpokenLanguages(){
