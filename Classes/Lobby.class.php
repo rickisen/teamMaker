@@ -12,6 +12,8 @@ class Lobby {
     $this->quality = $quality;
     $this->lobbyId = uniqid();
     $this->created = date("Y-m-d H:i:s");
+
+    $this->fetchSteamGroup();
   }
 
   function __get($name){
@@ -21,21 +23,21 @@ class Lobby {
   function isComplete(){
     if ( count($this->members) == 5 && $this->lobbyLeader )
       return TRUE;
-    else  
+    else
       return FALSE;
   }
 
   function findLeader(){
      $database = DB::getInstance();
 
-     // dynamically build this query to maintain compatibility 
+     // dynamically build this query to maintain compatibility
      // with when a lobby consists of less than 5 members
-     // 
+     //
      // first part of the query:
      $qGetLobbyLeader = '
           SELECT user.steam_id
           FROM user
-          WHERE steam_id = '.$this->members[0]; 
+          WHERE steam_id = '.$this->members[0];
 
      // add every elses steam id to the query
      for ($i = 1 ; $i != count($this->members) ; $i++){
@@ -69,5 +71,35 @@ class Lobby {
     	$this->findLeader();
     }
     return TRUE;
+  }
+
+  static function fetchSteamGroup(){
+    $database = DB::getInstance();
+
+    $qGetSteamGroup = '
+    SELECT id
+    FROM steam_group_chat
+    ORDER BY time_last_used ASC
+    LIMIT 1
+    ';
+
+    $result = $database->query($qGetSteamGroup);
+      if ($result->num_rows > 0) {
+        $this->steamGroup = $result->fetch_assoc()['id'];
+
+        $qUpdateSteamGroupLastUsed = '
+        UPDATE steam_group_chat
+        SET time_last_used = now()
+        WHERE steam_group_chat.id = "'.$this->steamGroup.'"
+        ';
+
+        $database->query($qUpdateSteamGroupLastUsed);
+
+    }elseif($error = $database->error) {
+      echo "Sorry! Seems like we were unable to find you a Steam group $error";
+      return false;
+    }
+
+     return true;
   }
 }
