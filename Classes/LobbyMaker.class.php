@@ -450,6 +450,7 @@ class LobbyMaker {
     }
   }
 
+
   static function levelSeven(){
     $lobbies  = self::getLobbyHolder();
     $database = DB::getInstance() ;
@@ -537,5 +538,71 @@ class LobbyMaker {
     }
     // move the players now so that we don't try to lobby people twice on level 3
     self::movePlayers();
+  }
+
+  static function generateQuery($optionsArr){
+      $formatWithLang = '
+          SELECT  count(user.steam_id) AS size, 
+                  GROUP_CONCAT(user.steam_id ORDER BY started_looking ASC) AS users
+
+          FROM   player_looking_for_lobby LEFT JOIN user 
+                   ON player_looking_for_lobby.steam_id = user.steam_id 
+
+          WHERE  primary_language   = %s
+             OR  secondary_language = %s
+             AND started_looking < (NOW() - INTERVAL 1 SECOND)
+
+          GROUP BY %s %s %s
+          HAVING size >= 5
+      ';
+
+      foreach($optionsArr as $key => $option){
+        switch ($key){
+        case 'lang':
+          break;
+        case 'lang':
+          break;
+        default:
+          break;
+        }
+      }
+
+  }
+
+  static function getSpokenLanguages(){
+    $database = DB::getInstance() ;
+
+    // Queries that gets all languages that have speakers in the db
+    $qGetAllPriLangs = ' 
+          SELECT DISTINCT primary_language 
+          FROM user 
+          WHERE primary_language IS NOT NULL 
+            AND primary_language != ""';
+
+    $qGetAllSecLangs = ' 
+          SELECT DISTINCT secondary_language 
+          FROM user 
+          WHERE secondary_language IS NOT NULL 
+            AND secondary_language != ""';
+
+    // this will come to hold all the spoken languages, both primary and secondary
+    $langs = array(); 
+
+    // add all primary languages into langs
+    $priLangResult = $database->query($qGetAllPriLangs);
+    while ($row = $priLangResult->fetch_assoc())
+      $langs[] = $row['primary_language'];
+
+    // and secondaries
+    $secLangResult = $database->query($qGetAllSecLangs);
+    while ($row = $secLangResult->fetch_assoc())
+      $langs[] = $row['secondary_language'];
+
+
+    // this makes sure that there is only one copy 
+    // of every spoken language in this array
+    $langs = array_unique($langs);
+
+    return $langs;
   }
 }
