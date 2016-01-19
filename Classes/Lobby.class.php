@@ -73,7 +73,7 @@ class Lobby {
     return TRUE;
   }
 
-  static function fetchSteamGroup(){
+  function fetchSteamGroup(){
     $database = DB::getInstance();
 
     $qGetSteamGroup = '
