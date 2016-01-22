@@ -566,16 +566,12 @@ class LobbyMaker {
         ON   player_looking_for_lobby.steam_id = user.steam_id ';
 
     // FORMATS, if mentioned in the options arr they will overwrite defaults ====================|
-    $FGroupBy1Part       = ' GROUP  BY %s '; 
-    $FGroupBy2Part       = ' GROUP  BY %s, %s '; 
-    $FGroupBy3Part       = ' GROUP  BY %s, %s, %s '; 
-    $FOrderBy1Part       = ' ORDER  BY %s '; 
-    $FOrderBy2Part       = ' ORDER  BY %s, %s '; 
-    $FOrderBy3Part       = ' ORDER  BY %s, %s, %s ';
-    $FSizePart           = ' HAVING size >= %d '; 
-    $FLimitPart          = ' LIMIT %d '; 
-    $FStartedLookingPart = ' WHERE  started_looking < (NOW() - INTERVAL %s ) ';
-    $FLanguagePart = '    
+    $fGroupByPart       = ' GROUP  BY %s '; 
+    $fOrderByPart       = ' ORDER  BY %s '; 
+    $fSizePart           = ' HAVING size >= %d '; 
+    $fLimitPart          = ' LIMIT %d '; 
+    $fStartedLookingPart = ' WHERE  started_looking < (NOW() - INTERVAL %s ) ';
+    $fLanguagePart = '    
         AND    primary_language   = %s
          OR    secondary_language = %s ';
 
@@ -583,42 +579,22 @@ class LobbyMaker {
     foreach($optionsArr as $key => $option){
       switch ($key){
       case 'members':
-        $sizePart           = sprintf($FSizePart, $option);
-        $limitPart          = sprintf($FLimitPart, $option);
+        $sizePart           = sprintf($fSizePart, $option);
+        $limitPart          = sprintf($fLimitPart, $option);
         break;
       case 'language':
-        $languagePart       = sprintf($FLanguagePart, $option, $option);
+        $languagePart       = sprintf($fLanguagePart, $option, $option);
         break;
       case 'started looking':
-        $startedLookingPart = sprintf($FStartedLookingPart, $option);
+        $startedLookingPart = sprintf($fStartedLookingPart, $option);
         break;
       case 'order by':
         $mode = 'SIMPLE';
-        switch (count($option)){
-        case 3 :
-          $orderByPart  = sprintf($FOrderBy3Part, $option[0], $option[1], $option[2]);
-          break;
-        case 2 :
-          $orderByPart  = sprintf($FOrderBy2Part, $option[0], $option[1]);
-          break;
-        case 1 :
-          $orderByPart  = sprintf($FOrderBy1Part, $option[0]);
-          break;
-        }
+        $orderByPart  = sprintf($fOrderByPart, $option);
         break;
       case 'group by':
         $mode = 'GROUP';
-        switch (count($option)){
-        case 3 :
-          $groupByPart  = sprintf($FGroupBy3Part, $option[0], $option[1], $option[2]);
-          break;
-        case 2 :
-          $groupByPart  = sprintf($FGroupBy2Part, $option[0], $option[1]);
-          break;
-        case 1 :
-          $groupByPart  = sprintf($FGroupBy1Part, $option[0]);
-          break;
-        }
+        $groupByPart  = sprintf($fGroupByPart, $option);
         break;
       }
     }
@@ -633,7 +609,7 @@ class LobbyMaker {
     return $query;
   }
 
-  static function getSpokenLanguages(){
+  static function fetchSpokenLanguages(){
     $database = DB::getInstance() ;
 
     // Queries that gets all languages that have speakers in the db
@@ -669,4 +645,69 @@ class LobbyMaker {
 
     return $langs;
   }
+
+  static function runDynlevel(){
+    $database = DB::getInstance();
+    $qualities = [ 
+      [
+        [ 'started looking' => '5 MINUTE', 'members' => '2', 'order by' => 'rank, region, primary_language']
+      ], 
+
+      [
+        [ 'started looking' => '4 MINUTE', 'members' => '4', 'order by' => 'region, rank, primary_language' ]
+      ], 
+
+      [
+        [ 'started looking' => '3 MINUTE', 'members' => '5', 'group by' => 'region, floor(rank/3) '],
+        [ 'started looking' => '3 MINUTE', 'members' => '5', 'group by' => 'region, ceil (rank/3) ']
+      ], 
+
+      [
+        [ 'started looking' => '2 MINUTE', 'members' => '5', 'group by' => 'region, floor(rank/2) '],
+        [ 'started looking' => '2 MINUTE', 'members' => '5', 'group by' => 'region, ceil (rank/2) '],
+        [ 'started looking' => '2 MINUTE', 'members' => '5', 'group by' => 'region, rank, floor(age_group/4) ']
+      ], 
+
+      [
+        [ 'started looking' => '1 MINUTE', 'members' => '5', 'group by' => 'region, rank, floor(age_group/3) '],
+        [ 'started looking' => '1 MINUTE', 'members' => '5', 'group by' => 'region, rank, floor(age_group/2), floor(hours_played/100/2) '],
+        [ 'started looking' => '1 MINUTE', 'members' => '5', 'group by' => 'region, rank, age_group, floor(hours_played/100/3) ']
+      ], 
+
+      [
+        [ 'started looking' =>'1  SECOND', 'members' => '5', 'group by' => 'region, rank, age_group, floor(hours_played/100/2) ']
+      ]
+    ] ;
+
+    $spokenLanguages = self::fetchSpokenLanguages(); 
+
+    // go through the qualities backwards since we are more specific 
+    // at the higher levels, and we want thoose to have a chance before the 
+    // levels that catch everybody.
+    for ($qLevel = count($qualities) - 1; $qLevel >= 2; $qLevel--){
+      // add a language to the queries above, and then run them
+      foreach ($spokenLanguages as $lang){
+        foreach ($qualities[$qLevel] as $subLevel){
+
+          // add the language part to the options array
+          $subLevel['language'] = $lang; 
+
+          //constructs the query
+          $query = self::generateQuery($subLevel);
+
+          if( $result = $database->query($query)){
+            if ( $numberOfRows = $result->num_rows > 0 ){
+              echo "found $numberOfRows $lang speaking player groups \n";
+              self::HandleGroupResults($result, $qLevel);
+            }
+          }
+
+          if ($error = $database->error){
+            echo "something wrong on level $qLevel on language $lang: $error ";
+          }
+        }
+      }
+    }
+  }
 }
+
