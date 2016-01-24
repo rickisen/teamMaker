@@ -572,8 +572,8 @@ class LobbyMaker {
     $fLimitPart          = ' LIMIT %d '; 
     $fStartedLookingPart = ' WHERE  started_looking < (NOW() - INTERVAL %s ) ';
     $fLanguagePart = '    
-        AND    primary_language   = %s
-         OR    secondary_language = %s ';
+        AND    primary_language   = "%s"
+         OR    secondary_language = "%s" ';
 
     // Parse the input options array ========================================|
     foreach($optionsArr as $key => $option){
@@ -615,13 +615,15 @@ class LobbyMaker {
     // Queries that gets all languages that have speakers in the db
     $qGetAllPriLangs = ' 
           SELECT DISTINCT primary_language 
-          FROM user 
+          FROM player_looking_for_lobby left join user 
+            on player_looking_for_lobby.steam_id = user.steam_id
           WHERE primary_language IS NOT NULL 
             AND primary_language != ""';
 
     $qGetAllSecLangs = ' 
           SELECT DISTINCT secondary_language 
-          FROM user 
+          FROM player_looking_for_lobby left join user 
+            on player_looking_for_lobby.steam_id = user.steam_id
           WHERE secondary_language IS NOT NULL 
             AND secondary_language != ""';
 
@@ -647,6 +649,7 @@ class LobbyMaker {
   }
 
   static function runDynlevel(){
+    $lobbies  = self::getLobbyHolder();
     $database = DB::getInstance();
     $qualities = [ 
       [
@@ -682,8 +685,11 @@ class LobbyMaker {
     $spokenLanguages = self::fetchSpokenLanguages(); 
 
     // go through the qualities backwards since we are more specific 
-    // at the higher levels, and we want thoose to have a chance before the 
-    // levels that catch everybody.
+    // at the higher levels, and we want thoose to have a chance to run before the 
+    // levels that catch everybody (that have a very low specificity). 
+    //
+    // first run the group levels. and then the oreder-by, they 
+    // still need to be run differently
     for ($qLevel = count($qualities) - 1; $qLevel >= 2; $qLevel--){
       // add a language to the queries above, and then run them
       foreach ($spokenLanguages as $lang){
@@ -705,6 +711,50 @@ class LobbyMaker {
           if ($error = $database->error){
             echo "something wrong on level $qLevel on language $lang: $error ";
           }
+        }
+      }
+    }
+
+    // run the "order-by" levels a bit differently. and first 
+    // for every lang, then without lang
+    for ($qLevel = 1; $qLevel >= 0; $qLevel--){
+      foreach ($spokenLanguages as $lang){
+        foreach ($qualities[$qLevel] as $subLevel){
+          $subLevel['language'] = $lang; 
+          //constructs the query
+          $query = self::generateQuery($subLevel);
+
+          if( $result = $database->query($query) ) {
+            if ($result->num_rows > 1) {
+              self::logLevel(0);
+              while( $row = $result->fetch_assoc()){
+                // add the current user into the newest lobby
+                $lobbies->addMember($row['steam_id'], 1);
+              }
+            }
+          } elseif ($error = $database->error){
+            echo "something wrong with level $qLevel: ".$error;
+          }
+        }
+      }
+    }
+
+    // same but without lang
+    for ($qLevel = 1; $qLevel >= 0; $qLevel--){
+      foreach ($qualities[$qLevel] as $subLevel){
+        //constructs the query
+        $query = self::generateQuery($subLevel);
+
+        if( $result = $database->query($query) ) {
+          if ($result->num_rows > 1) {
+            self::logLevel(0);
+            while( $row = $result->fetch_assoc()){
+              // add the current user into the newest lobby
+              $lobbies->addMember($row['steam_id'], 1);
+            }
+          }
+        } elseif ($error = $database->error){
+          echo "something wrong with level $qLevel: ".$error;
         }
       }
     }
